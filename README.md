@@ -11,8 +11,8 @@ JavaScript library to create masonry layouts with draggable UI elements
 absoluteMasonryInit({
   containerClassName: "masonry-container", // The class name of the container wrapping the items - Ensure the element has relative positioning
   itemClassName: "masonry-item", // The class name of the elements to be sorted - Ensure the elements have absolute positioning
-  itemWidth: "100", // The width of the elements to be sorted. Unit is px - Ensure the elements are of equal width
-  gapSize: "5", // OPTIONAL - The gap between each element to be sorted. Default value is 10. Unit is px
+  itemWidth: 100, // The width of the elements to be sorted. Unit is px - Ensure the elements are of equal width
+  gapSize: 5, // OPTIONAL - The gap between each element to be sorted. Default value is 10. Unit is px
   draggable: true, // OPTIONAL - Whether or not you want the elements to be draggable and repositionable. Default value is false
 })
 ```
