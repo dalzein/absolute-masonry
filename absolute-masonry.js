@@ -1,25 +1,29 @@
 window.absoluteMasonry = (() => {
+  let _amContainerClassName;
+  let _amItemClassName;
+  let _amItemWidth;
+  let _amGapSize;
+  let _amColumnCount;
+  let _amItemPositions = [];
+  let _onItemPositionChange;
+
   // Initialise class names for the container and items to be arranged
-  const absoluteMasonryInit = ({
+  const init = ({
     containerClassName,
     itemClassName,
     itemWidth,
     gapSize = 10,
     draggable = false,
+    onItemPositionChange,
   }) => {
-    window.amContainerClassName = containerClassName;
-    window.amItemClassName = itemClassName;
-    window.amItemWidth = itemWidth;
-    window.amGapSize = gapSize;
+    _amContainerClassName = containerClassName;
+    _amItemClassName = itemClassName;
+    _amItemWidth = itemWidth;
+    _amGapSize = gapSize;
+    _onItemPositionChange = onItemPositionChange;
 
+    prepareEventListenersAndStyles(draggable);
     sortItems();
-
-    if (draggable) {
-      addMouseEventListeners();
-    } else {
-      removeMouseEventListeners();
-      addTransitionStyles();
-    }
   };
 
   // We need a debouncer as the resize event fires rapidly
@@ -35,37 +39,36 @@ window.absoluteMasonry = (() => {
   const sortItems = (force = false) => {
     // Determine the number of possible columns for our masonry sorting algorithm
     const containerRef = document.getElementsByClassName(
-      window.amContainerClassName
+      _amContainerClassName
     )[0];
     if (!containerRef) return;
 
     const containerWidth = containerRef.offsetWidth;
     let columnCount = Math.floor(
-      (containerWidth + window.amGapSize) /
-        (window.amItemWidth + window.amGapSize)
+      (containerWidth + _amGapSize) / (_amItemWidth + _amGapSize)
     );
     columnCount = columnCount === 0 ? 1 : columnCount;
 
     // If the column count is still the same we don't need to do anything
-    if (window.amColumnCount === columnCount && !force) return;
+    if (_amColumnCount === columnCount && !force) return;
 
     // Update the column count
-    window.amColumnCount = columnCount;
+    _amColumnCount = columnCount;
 
     let items = [];
-    if (window.amItemPositions) {
-      for (const itemPosition of window.amItemPositions) {
-        const item = document.querySelector(`[data-amid=${itemPosition}]`);
+    if (_amItemPositions) {
+      for (const itemPosition of _amItemPositions) {
+        const item = document.querySelector(`[data-amId="${itemPosition}"]`);
         if (!item) {
           console.error(
-            `Couldn't find element with 'data-amid' attribute ${itemPosition} - ensure each draggable element has a unique 'data-amid' attribute value that does not change`
+            `Couldn't find element with 'data-amId' attribute ${itemPosition} - ensure each draggable element has a unique 'data-amId' attribute value that does not change`
           );
           return;
         }
         items.push(item);
       }
     } else {
-      items = document.getElementsByClassName(window.amItemClassName);
+      items = document.getElementsByClassName(_amItemClassName);
     }
 
     const columnHeights = [];
@@ -74,7 +77,7 @@ window.absoluteMasonry = (() => {
       if (i < columnCount) {
         // Move item to top row and add a new column record in the column heights array with the height of the item
         items[i].style.transform = `translate(${
-          window.amItemWidth * i + window.amGapSize * i
+          _amItemWidth * i + _amGapSize * i
         }px, 0px)`;
         columnHeights.push(items[i].offsetHeight);
       } else {
@@ -82,22 +85,22 @@ window.absoluteMasonry = (() => {
         const minColumnHeight = Math.min(...columnHeights);
         const columnIndex = columnHeights.indexOf(minColumnHeight);
         items[i].style.transform = `translate(${
-          window.amItemWidth * columnIndex + window.amGapSize * columnIndex
-        }px, ${minColumnHeight + window.amGapSize}px)`;
-        columnHeights[columnIndex] += items[i].offsetHeight + window.amGapSize;
+          _amItemWidth * columnIndex + _amGapSize * columnIndex
+        }px, ${minColumnHeight + _amGapSize}px)`;
+        columnHeights[columnIndex] += items[i].offsetHeight + _amGapSize;
       }
     }
 
     containerRef.style.height = `${Math.max(...columnHeights)}px`;
   };
 
-  const moveItem = (x, y, identifier) => {
+  const moveItem = (x, y, target) => {
     const items = [];
-    for (const itemPosition of window.amItemPositions) {
-      const item = document.querySelector(`[data-amId=${itemPosition}]`);
+    for (const itemPosition of _amItemPositions) {
+      const item = document.querySelector(`[data-amId="${itemPosition}"]`);
       if (!item) {
         console.error(
-          `Couldn't find element with 'data-amid' attribute ${itemPosition} - ensure each draggable element has a unique 'data-amid' attribute value that does not change`
+          `Couldn't find element with 'data-amId' attribute ${itemPosition} - ensure each draggable element has a unique 'data-amId' attribute value that does not change`
         );
         return;
       }
@@ -106,7 +109,7 @@ window.absoluteMasonry = (() => {
 
     const columnHeights = [];
     const containerRef = document.getElementsByClassName(
-      window.amContainerClassName
+      _amContainerClassName
     )[0];
     const { x: containerX, y: containerY } =
       containerRef.getBoundingClientRect();
@@ -114,38 +117,39 @@ window.absoluteMasonry = (() => {
     let gap = 0;
     let newPositionIndex;
     let moveTargetToEnd = true;
+    const scrollY = window.scrollY;
 
     // Loop through the items and determine their new locations
     for (let i = 0; i < items.length; i++) {
       if (!items[i].classList.contains("dragging")) {
-        if (i + offset - gap < amColumnCount) {
+        if (i + offset - gap < _amColumnCount) {
           // Determine if this item is at the position where our cursor is (if so, this is the offset point)
           if (
             containerX +
-              window.amItemWidth * (i - gap) +
-              window.amGapSize * (i - gap) +
-              window.amItemWidth >=
+              _amItemWidth * (i - gap) +
+              _amGapSize * (i - gap) +
+              _amItemWidth >=
               x &&
             containerX +
-              window.amItemWidth * (i - gap) +
-              window.amGapSize * (i - gap) -
-              window.amGapSize <=
+              _amItemWidth * (i - gap) +
+              _amGapSize * (i - gap) -
+              _amGapSize <=
               x &&
-            containerY + items[i].offsetHeight >= y &&
-            containerY <= y
+            containerY + items[i].offsetHeight + scrollY >= y &&
+            containerY + scrollY <= y
           ) {
             // We found where the cursor is, set the offset flag, set the new position of the item being dragged and add its height to the column heights array
-            columnHeights.push(amMouseDragData.target.offsetHeight);
+            columnHeights.push(target.offsetHeight);
             offset = 1;
             newPositionIndex = i - gap;
             moveTargetToEnd = false;
 
             // Taking into account the offset and potential gap, check if the item will still fit in the top row
-            if (i + offset - gap < amColumnCount) {
+            if (i + offset - gap < _amColumnCount) {
               // Item can sit in the top row
               items[i].style.transform = `translate(${
-                window.amItemWidth * (i + offset - gap) +
-                window.amGapSize * (i + offset - gap)
+                _amItemWidth * (i + offset - gap) +
+                _amGapSize * (i + offset - gap)
               }px, 0px)`;
               columnHeights.push(items[i].offsetHeight);
             } else {
@@ -153,17 +157,15 @@ window.absoluteMasonry = (() => {
               const minColumnHeight = Math.min(...columnHeights);
               const columnIndex = columnHeights.indexOf(minColumnHeight);
               items[i].style.transform = `translate(${
-                window.amItemWidth * columnIndex +
-                window.amGapSize * columnIndex
-              }px, ${minColumnHeight + window.amGapSize}px)`;
-              columnHeights[columnIndex] +=
-                items[i].offsetHeight + window.amGapSize;
+                _amItemWidth * columnIndex + _amGapSize * columnIndex
+              }px, ${minColumnHeight + _amGapSize}px)`;
+              columnHeights[columnIndex] += items[i].offsetHeight + _amGapSize;
             }
           } else {
             // Move item to top row and add a new column record in the column heights array with the height of the item
             items[i].style.transform = `translate(${
-              window.amItemWidth * (i + offset - gap) +
-              window.amGapSize * (i + offset - gap)
+              _amItemWidth * (i + offset - gap) +
+              _amGapSize * (i + offset - gap)
             }px, 0px)`;
             columnHeights.push(items[i].offsetHeight);
           }
@@ -173,43 +175,41 @@ window.absoluteMasonry = (() => {
           let columnIndex = columnHeights.indexOf(minColumnHeight);
           if (
             containerX +
-              window.amItemWidth * columnIndex +
-              window.amGapSize * columnIndex +
-              window.amItemWidth >=
+              _amItemWidth * columnIndex +
+              _amGapSize * columnIndex +
+              _amItemWidth >=
               x &&
             containerX +
-              window.amItemWidth * columnIndex +
-              window.amGapSize * columnIndex -
-              window.amGapSize <=
+              _amItemWidth * columnIndex +
+              _amGapSize * columnIndex -
+              _amGapSize <=
               x &&
             containerY +
               minColumnHeight +
               items[i].offsetHeight +
-              window.amGapSize >=
+              _amGapSize +
+              scrollY >=
               y &&
-            containerY + minColumnHeight <= y
+            containerY + minColumnHeight + scrollY <= y
           ) {
             // We found where the cursor is, set the new position of the item being dragged and add its height to the column heights array
             newPositionIndex = i - gap;
             moveTargetToEnd = false;
-            columnHeights[columnIndex] +=
-              amMouseDragData.target.offsetHeight + window.amGapSize;
+            columnHeights[columnIndex] += target.offsetHeight + _amGapSize;
             minColumnHeight = Math.min(...columnHeights);
             columnIndex = columnHeights.indexOf(minColumnHeight);
 
             // Decide item location based on minimum column height and update the height for that column
             items[i].style.transform = `translate(${
-              window.amItemWidth * columnIndex + window.amGapSize * columnIndex
-            }px, ${minColumnHeight + window.amGapSize}px)`;
-            columnHeights[columnIndex] +=
-              items[i].offsetHeight + window.amGapSize;
+              _amItemWidth * columnIndex + _amGapSize * columnIndex
+            }px, ${minColumnHeight + _amGapSize}px)`;
+            columnHeights[columnIndex] += items[i].offsetHeight + _amGapSize;
           } else {
             // Decide item location based on minimum column height and update the height for that column
             items[i].style.transform = `translate(${
-              window.amItemWidth * columnIndex + window.amGapSize * columnIndex
-            }px, ${minColumnHeight + window.amGapSize}px)`;
-            columnHeights[columnIndex] +=
-              items[i].offsetHeight + window.amGapSize;
+              _amItemWidth * columnIndex + _amGapSize * columnIndex
+            }px, ${minColumnHeight + _amGapSize}px)`;
+            columnHeights[columnIndex] += items[i].offsetHeight + _amGapSize;
           }
         }
       } else {
@@ -223,168 +223,121 @@ window.absoluteMasonry = (() => {
     //  If the item was dragged outside of the container move it to the end
     if (moveTargetToEnd) newPositionIndex = items.length - 1;
 
-    if (identifier) {
-      const newPositions = window.amItemPositions;
-      const index = newPositions.indexOf(identifier);
+    const id = target?.getAttribute("data-amId");
+    if (id) {
+      const newPositions = _amItemPositions;
+      const index = newPositions.indexOf(id);
       newPositions.splice(index, 1);
-      newPositions.splice(newPositionIndex, 0, identifier);
-      window.amItemPositions = newPositions;
+      newPositions.splice(newPositionIndex, 0, id);
+      _amItemPositions = newPositions;
     }
   };
 
-  const handleMouseDown = (e) => {
+  const handleMouseDown = (downEvent) => {
     // Ignore right click
-    if (e.button === 2) return;
+    if (downEvent.button === 2) return;
+
+    // Mobile and touch devices use e.changedTouches
+    if (downEvent.changedTouches && downEvent.changedTouches.length) {
+      downEvent = downEvent.changedTouches[0];
+    }
+
+    // Mouse data to track
+    const target = downEvent.target;
+    const { x: itemX, y: itemY } = target.getBoundingClientRect();
+    const { x: containerX, y: containerY } = document
+      .getElementsByClassName(_amContainerClassName)[0]
+      .getBoundingClientRect();
+    const xStart = downEvent.pageX;
+    const yStart = downEvent.pageY;
+    const xOffset = downEvent.pageX - itemX;
+    const yOffset = downEvent.pageY - itemY;
+    const mouseDeltaThreshold = 6;
+    let dragging = false;
+
+    const handleMouseMove = (moveEvent) => {
+      if (moveEvent.changedTouches && moveEvent.changedTouches.length) {
+        moveEvent = moveEvent.changedTouches[0];
+      }
+
+      const deltaX = Math.abs(moveEvent.pageX - xStart);
+      const deltaY = Math.abs(moveEvent.pageY - yStart);
+
+      // Determine if we're dragging or not
+      if (
+        !dragging &&
+        (deltaX > mouseDeltaThreshold || deltaY > mouseDeltaThreshold)
+      ) {
+        dragging = true;
+        target.classList.toggle("dragging", true);
+        target.style.transition = "none";
+        target.style.zIndex = "1000";
+      }
+
+      if (dragging) {
+        target.style.transform = `translate(${
+          moveEvent.pageX - xOffset - containerX - 1
+        }px, ${moveEvent.pageY - yOffset - containerY - 1}px)`;
+
+        moveItem(moveEvent.pageX, moveEvent.pageY, target);
+      }
+    };
+
+    const handleMouseUp = (upEvent) => {
+      upEvent.preventDefault();
+
+      if (upEvent.changedTouches && upEvent.changedTouches.length) {
+        upEvent = upEvent.changedTouches[0];
+      }
+
+      // If we were dragging, update the new item positions if they've changed
+      if (dragging) {
+        moveItem(upEvent.pageX, upEvent.pageY, target);
+
+        _onItemPositionChange && _onItemPositionChange(_amItemPositions);
+
+        target.classList.remove(["dragging"]);
+        target.style.transition = "transform 0.2s linear";
+
+        sortItems(true);
+
+        const items = document.getElementsByClassName(_amItemClassName);
+
+        for (const item of items) {
+          item.style.zIndex = 1;
+        }
+      }
+
+      // Remove listeners
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("touchmove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("touchend", handleMouseUp);
+    };
 
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("touchmove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
     document.addEventListener("touchend", handleMouseUp);
-
-    // Mobile and touch devices use e.changedTouches
-    if (e.changedTouches && e.changedTouches.length) {
-      e = e.changedTouches[0];
-    }
-
-    e.target.classList.add("dragging");
-    e.target.style.transition = "none";
-    e.target.style.zIndex = "1000";
-
-    const { x: itemX, y: itemY } = e.target.getBoundingClientRect();
-    const { x: containerX, y: containerY } = document
-      .getElementsByClassName(window.amContainerClassName)[0]
-      .getBoundingClientRect();
-
-    amMouseDragData = {
-      ...amMouseDragData,
-      mouseDeltaThreshold: 6,
-      containerX,
-      containerY,
-      xStart: e.pageX,
-      yStart: e.pageY,
-      xOffset: e.pageX - itemX,
-      yOffset: e.pageY - itemY,
-      x: e.pageX,
-      y: e.pageY,
-      down: true,
-      target: e.target,
-    };
   };
 
-  const handleMouseMove = (e) => {
-    if (e.changedTouches && e.changedTouches.length) {
-      e = e.changedTouches[0];
-    }
+  const prepareEventListenersAndStyles = (draggable) => {
+    _amItemPositions = [];
+    const items = document.getElementsByClassName(_amItemClassName);
+    const container = document.getElementsByClassName(_amContainerClassName)[0];
+    container.style.position = "relative";
 
-    const deltaX = Math.abs(e.pageX - amMouseDragData.xStart);
-    const deltaY = Math.abs(e.pageY - amMouseDragData.yStart);
-
-    // Determine if we're either just clicking on or dragging the item based on movement delta
-    if (
-      deltaX > amMouseDragData.mouseDeltaThreshold ||
-      deltaY > amMouseDragData.mouseDeltaThreshold ||
-      amMouseDragData.dragging
-    ) {
-      amMouseDragData.target.style.transform = `translate(${
-        amMouseDragData.x -
-        amMouseDragData.xOffset -
-        amMouseDragData.containerX -
-        1
-      }px, ${
-        amMouseDragData.y -
-        amMouseDragData.yOffset -
-        amMouseDragData.containerY -
-        1
-      }px)`;
-
-      moveItem(e.pageX, e.pageY);
-      amMouseDragData = {
-        ...amMouseDragData,
-        x: e.pageX,
-        y: e.pageY,
-        dragging: true,
-      };
-    }
-  };
-
-  const handleMouseUp = (e) => {
-    e.preventDefault();
-
-    if (e.changedTouches && e.changedTouches.length) {
-      e = e.changedTouches[0];
-    }
-
-    if (amMouseDragData.dragging) {
-      const identifier = amMouseDragData.target.getAttribute("data-amId");
-
-      moveItem(e.pageX, e.pageY, identifier);
-
-      amMouseDragData.target &&
-        amMouseDragData.target.classList.remove(["dragging"]);
-      amMouseDragData.target &&
-        (amMouseDragData.target.style.transition = "transform 0.2s linear");
-
-      sortItems(true);
-
-      const items = document.getElementsByClassName(window.amItemClassName);
-      for (const item of items) {
-        item.style.zIndex = 1;
+    for (const item of items) {
+      if (draggable) {
+        item.addEventListener("mousedown", handleMouseDown);
+        item.addEventListener("touchstart", handleMouseDown);
+        _amItemPositions.push(item.getAttribute("data-amId"));
+      } else {
+        item.removeEventListener("mousedown", handleMouseDown);
+        item.removeEventListener("touchstart", handleMouseDown);
       }
-    }
 
-    amMouseDragData = {
-      ...amMouseDragData,
-      down: false,
-      dragging: false,
-      target: null,
-    };
-
-    document.removeEventListener("mousemove", handleMouseMove);
-    document.removeEventListener("touchmove", handleMouseMove);
-    document.removeEventListener("mouseup", handleMouseUp);
-    document.removeEventListener("touchend", handleMouseUp);
-  };
-
-  // Add mouse event listeners
-  const addMouseEventListeners = () => {
-    window.amMouseDragData = {
-      xStart: 0,
-      yStart: 0,
-      xOffset: 0,
-      yOffset: 0,
-      x: 0,
-      y: 0,
-      down: false,
-      containerX: 0,
-      containerY: 0,
-      dragging: false,
-      mouseDeltaThreshold: 6,
-      target: null,
-    };
-
-    window.amItemPositions = [];
-    const items = document.getElementsByClassName(window.amItemClassName);
-    for (const item of items) {
-      item.addEventListener("mousedown", handleMouseDown);
-      item.addEventListener("touchstart", handleMouseDown);
-      item.style.transition = "transform 0.2s linear";
-      item.style.touchAction = "none";
-      window.amItemPositions.push(item.getAttribute("data-amId"));
-    }
-  };
-
-  // Remove mouse event listeners
-  const removeMouseEventListeners = () => {
-    const items = document.getElementsByClassName(window.amItemClassName);
-    for (const item of items) {
-      item.removeEventListener("mousedown", handleMouseDown);
-      item.removeEventListener("touchstart", handleMouseDown);
-    }
-  };
-
-  const addTransitionStyles = () => {
-    const items = document.getElementsByClassName(window.amItemClassName);
-    for (const item of items) {
+      item.style.position = "absolute";
       item.style.transition = "transform 0.2s linear";
       item.style.touchAction = "none";
     }
@@ -393,6 +346,7 @@ window.absoluteMasonry = (() => {
   window.onresize = debounce(sortItems);
 
   return {
-    absoluteMasonryInit,
+    init,
+    itemPositions: _amItemPositions,
   };
 })();
