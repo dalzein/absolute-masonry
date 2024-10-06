@@ -61,7 +61,9 @@ absoluteMasonry.init({
 
 ### Creating draggable elements
 
-If `draggable` is set to true, all elements MUST include an `amId` attribute with a unique string value. When the items are repositioned, the new order/positions are made available on the global (window) object under `absoluteMasonry.itemPositions`. This property is an array of strings (the provided `amId` attribute values), reflecting their new order where the index is the position of the element. This is done so that you can access the new positions after reording - for example, if you wish to store the order permanently. You can also provide a callback function on init by assigning it to the `onItemPositionChange` property (see usage example above). The function will be called after the item order changes as a result of an item being dragged to a new position, and the string array of item positions will be passed as an argument.
+If `draggable` is set to true, all elements MUST include an `amId` attribute with a unique string value. When the items are repositioned, the new order/positions are made available on the global (window) object under `absoluteMasonry.itemPositions`. This property is an array of strings (the provided `amId` attribute values), reflecting their new order where the index is the position of the element. This is done so that you can access the new positions after reording - for example, if you wish to store the order permanently.
+
+You can also provide a callback function on init by assigning it to the `onItemPositionChange` property (see usage example above). The function will be called after the item order changes as a result of an item being dragged to a new position, and the string array of item positions will be passed as an argument.
 
 ## Masonry layout example
 
