@@ -1,6 +1,6 @@
 # absolute-masonry
 
-JavaScript library for creating masonry layouts with draggable UI elements
+A JavaScript library for creating masonry layouts with draggable UI elements.
 
 ## How to use it
 
