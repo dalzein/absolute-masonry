@@ -10,7 +10,7 @@ A masonry layout is where elements are arranged in a grid but are not constraine
 
 Virtual columns are created based on the available width (determined by the container) and the specified item widths. The location of each item is determined based on whichever column is the shortest at the time. The item's height is then added to that column. This repeats for each item. This implementation relies on absolute positioning as the item is being placed at a specific location using `transform`.
 
-The dragging/reordering functionality is achieved with the same algorithm but by inserting a gap with the item's dimensions wherever the cursor is encountered.
+The dragging/reordering functionality is achieved with the same algorithm but by skipping over the item being dragged, and inserting a gap with the item's dimensions wherever the cursor is encountered.
 
 ## How to use it
 
