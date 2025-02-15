@@ -1,6 +1,16 @@
 # absolute-masonry
 
-A JavaScript library for creating masonry layouts with draggable UI elements.
+A JavaScript library for creating reorderable masonry layouts.
+
+## Masonry layout?
+
+A masonry layout is where elements are arranged in a grid but are not constrained to uniform row heights. Instead, items are placed in an optimal position based on available vertical space, much like a mason fitting stones into a wall, hence the name.
+
+## How it works
+
+Virtual columns are created based on the available width (determined by the container) and the specified item widths. The location of each item is determined based on whichever column is the shortest at the time. The item's height is then added to that column. This repeats for each item. This implementation relies on absolute positioning as the item is being placed at a specific location using `transform`.
+
+The dragging/reordering functionality is achieved with the same algorithm but by inserting a gap with the item's dimensions wherever the cursor is encountered.
 
 ## How to use it
 
